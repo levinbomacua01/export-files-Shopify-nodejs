@@ -1,5 +1,7 @@
 📦 Exporting Files from Shopify using Node.js
+
 This Node.js project demonstrates how to fetch media files (such as images and files) from your Shopify store using the Shopify GraphQL Admin API, save them locally, and optionally zip them for easier download or backup.
+
 
 ✨ Features
 <ul>
@@ -10,11 +12,12 @@ This Node.js project demonstrates how to fetch media files (such as images and f
 </ul>
 
 ⚙️ Installation
-1. Clone this repository or create your Node.js project.
-2. Navigate to the project directory.
-3. Install dependencies: npm install axios adm-zip
+1. Clone this repository or create your Node.js project.  
+2. Navigate to the project directory.  
+3. Install dependencies: <br>
+   <code>npm install axios adm-zip</code>
 
-<strong>Note: fs and path are built-in Node.js modules; no need to install them.</strong>
+<strong>Note:</strong> <code>fs</code> and <code>path</code> are built-in Node.js modules; no need to install them.
 
 🔑 Setup
 Before running the script, ensure you have:
@@ -24,20 +27,24 @@ Before running the script, ensure you have:
     <li>Your Storefront domain or Admin domain.</li>
 </ul>
 
-Create a .env file (or store securely) with:
-API_VERSION='2025-04'
-SHOPIFY_STORE="storename.myshopify.com"
-ACCESS_TOKEN="shpat_XXXXXXXXXXXXXXXXXXXX"
+Create a <code>.env</code> file (or store securely) with:
+<pre>
+    API_VERSION='2025-04'
+    SHOPIFY_STORE="storename.myshopify.com"
+    ACCESS_TOKEN="shpat_XXXXXXXXXXXXXXXXXXXX"
+</pre>
 
 
 🛠 Usage
-Update index.js with your query or logic to fetch media files.
-Run the script: node index.js
+Update <code>index.js</code> with your query or logic to fetch media files.
+
+Run the script:
+<pre>node index.js</pre>
 
 The script will:
 <ul>
     <li>Fetch files from Shopify.</li>
-    <li>Download them into the /downloads folder.</li>
+    <li>Download them into the <code>/downloads</code> folder.</li>
     <li>Optionally zip them into an archive.</li>
 </ul>
 
