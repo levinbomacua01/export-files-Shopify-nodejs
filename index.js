@@ -5,7 +5,7 @@ const AdmZip = require('adm-zip');
 
 const GRAPHQL_URL = `https://${process.env.SHOPIFY_STORE}/admin/api/${process.env.API_VERSION}/graphql.json`;
 
-const TEMP_DIR = './downloaded_files';
+const TEMP_DIR = './downloads';
 const ZIP_DIR = './zipped_files';
 const ZIP_FILE = path.join(ZIP_DIR, 'files.zip');
 
@@ -48,104 +48,111 @@ const downloadFile = async (url, outputPath, retries = 3) => {
 };
 
 const fetchAndSaveFiles = async () => {
-  let hasNextPage = true;
-  let after = null;
-  let page = 1;
 
-  while (hasNextPage) {
-    console.log(`📄 Fetching page ${page}...`);
-    const query = `
-    {
-      files(first: 50${after ? `, after: "${after}"` : ''}) {
-        pageInfo {
-          hasNextPage
-        }
-        edges {
-          cursor
-          node {
-            __typename
-            id
-            alt
-            createdAt
-            fileStatus
-            ... on GenericFile {
-              url
-              mimeType
+    let hasNextPage = true;
+    let after = null;
+    let page = 1;
+
+    while (hasNextPage) {
+
+        console.log(`📄 Fetching page ${page}...`);
+
+        const query = `
+        {
+            files(first: 50${after ? `, after: "${after}"` : ''}) {
+            pageInfo {
+                hasNextPage
             }
-            ... on MediaImage {
-              image {
-                originalSrc
-              }
+            edges {
+            cursor
+            node {
+                __typename
+                id
+                alt
+                createdAt
+                fileStatus
+                ... on GenericFile {
+                url
+                mimeType
+                }
+                ... on MediaImage {
+                image {
+                    originalSrc
+                }
+                }
             }
-          }
+            }
         }
-      }
-    }`;
+        }`;
 
-    try {
-      const response = await axios.post(GRAPHQL_URL, { query }, {
-        headers: {
-          'X-Shopify-Access-Token': process.env.ACCESS_TOKEN,
-          'Content-Type': 'application/json',
-        },
-      });
+        try {
 
-      const files = response.data.data.files.edges;
-      const pageDir = path.join(TEMP_DIR, `page_${page}`);
-      fs.mkdirSync(pageDir, { recursive: true });
+            const response = await axios.post(GRAPHQL_URL, { query }, {
+                headers: {
+                'X-Shopify-Access-Token': process.env.ACCESS_TOKEN,
+                'Content-Type': 'application/json',
+                },
+            });
 
-        for (const { node } of files) {
-          const fileUrl =
-            node.__typename === 'GenericFile' ? node.url :
-            node.__typename === 'MediaImage' ? node.image?.originalSrc : null;
+            const files = response.data.data.files.edges;
 
-          if (!fileUrl) {
-            console.warn(`⚠️ No valid URL for file ID: ${node.id}`);
-            continue;
-          }
+            const pageDir = path.join(TEMP_DIR, `page_${page}`);
 
-          // ✅ Step 1: Try extracting filename from the URL
-          let fileName;
-          try {
-            const urlPath = new URL(fileUrl).pathname;
-            fileName = path.basename(urlPath).split('?')[0]; // removes query string
-          } catch {
-            fileName = null;
-          }
+            fs.mkdirSync(pageDir, { recursive: true });
 
-          // ✅ Step 2: Fallback to originalFile.fileName if CDN name is missing
-          if (!fileName) {
-            fileName = node.originalFile?.fileName || null;
-          }
+            for (const { node } of files) {
+            const fileUrl =
+                node.__typename === 'GenericFile' ? node.url :
+                node.__typename === 'MediaImage' ? node.image?.originalSrc : null;
 
-          // ✅ Step 3: Final fallback to alt or ID + extension
-          if (!fileName) {
-            const base = node.alt?.replace(/[^a-zA-Z0-9_\-\.]/g, '_') || node.id;
-            const ext = node.mimeType?.split('/')[1] || 'jpg';
-            fileName = `${base}.${ext}`;
-          }
+            if (!fileUrl) {
+                console.warn(`⚠️ No valid URL for file ID: ${node.id}`);
+                continue;
+            }
 
-          // ✅ Step 4: Ensure there's a file extension
-          if (!path.extname(fileName)) {
-            const fallbackExt = node.mimeType?.split('/')[1] || 'jpg';
-            fileName += `.${fallbackExt}`;
-          }
+            // ✅ Step 1: Try extracting filename from the URL
+            let fileName;
+            try {
+                const urlPath = new URL(fileUrl).pathname;
+                fileName = path.basename(urlPath).split('?')[0]; // removes query string
+            } catch {
+                fileName = null;
+            }
 
-          const outputPath = path.join(pageDir, fileName);
-          await downloadFile(fileUrl, outputPath);
-          console.log(`✅ Downloaded: ${path.relative('.', outputPath)}`);
-        }
+            // ✅ Step 2: Fallback to originalFile.fileName if CDN name is missing
+            if (!fileName) {
+                fileName = node.originalFile?.fileName || null;
+            }
+
+            // ✅ Step 3: Final fallback to alt or ID + extension
+            if (!fileName) {
+                const base = node.alt?.replace(/[^a-zA-Z0-9_\-\.]/g, '_') || node.id;
+                const ext = node.mimeType?.split('/')[1] || 'jpg';
+                fileName = `${base}.${ext}`;
+            }
+
+            // ✅ Step 4: Ensure there's a file extension
+            if (!path.extname(fileName)) {
+                const fallbackExt = node.mimeType?.split('/')[1] || 'jpg';
+                fileName += `.${fallbackExt}`;
+            }
+
+            const outputPath = path.join(pageDir, fileName);
+            await downloadFile(fileUrl, outputPath);
+            console.log(`✅ Downloaded: ${path.relative('.', outputPath)}`);
+            }
+            
             hasNextPage = response.data.data.files.pageInfo.hasNextPage;
             after = files.length > 0 ? files[files.length - 1].cursor : null;
             page++;
 
-          } catch (err) {
+        } catch (err) {
             console.error('❌ GraphQL error:', err.response?.data || err.message);
             break;
-          }
-
         }
-      };
+    }
+
+};
 
 const zipAllFiles = () => {
   console.log('📦 Zipping all downloaded files...');
